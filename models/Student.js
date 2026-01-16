@@ -1,5 +1,25 @@
 const mongoose = require("mongoose");
 
+/* ======================================
+   SUB-SCHEMA FOR FILE STORAGE
+====================================== */
+const fileSchema = new mongoose.Schema(
+    {
+        data: {
+            type: Buffer,
+            required: true
+        },
+        contentType: {
+            type: String,
+            required: true
+        }
+    },
+    { _id: false } // prevents extra _id for each file object
+);
+
+/* ======================================
+   STUDENT SCHEMA
+====================================== */
 const StudentSchema = new mongoose.Schema(
     {
         /* ===============================
@@ -15,7 +35,7 @@ const StudentSchema = new mongoose.Schema(
             type: String,
             required: true,
             unique: true,
-            match: /^\d{12}$/
+            match: [/^\d{12}$/, "Invalid Aadhar number"]
         },
 
         dob: {
@@ -35,7 +55,7 @@ const StudentSchema = new mongoose.Schema(
         fatherAadhar: {
             type: String,
             required: true,
-            match: /^\d{12}$/
+            match: [/^\d{12}$/, "Invalid Aadhar number"]
         },
 
         motherName: {
@@ -47,7 +67,7 @@ const StudentSchema = new mongoose.Schema(
         motherAadhar: {
             type: String,
             required: true,
-            match: /^\d{12}$/
+            match: [/^\d{12}$/, "Invalid Aadhar number"]
         },
 
         /* ===============================
@@ -70,35 +90,29 @@ const StudentSchema = new mongoose.Schema(
 
         /* ===============================
            DOCUMENTS (BUFFER STORAGE)
-           👉 NO FILE SYSTEM
         =============================== */
         studentPhoto: {
-            data: Buffer,
-            contentType: String,
+            type: fileSchema,
             required: true
         },
 
         studentSignature: {
-            data: Buffer,
-            contentType: String,
+            type: fileSchema,
             required: true
         },
 
         studentAadharPhoto: {
-            data: Buffer,
-            contentType: String,
+            type: fileSchema,
             required: true
         },
 
         fatherAadharPhoto: {
-            data: Buffer,
-            contentType: String,
+            type: fileSchema,
             required: true
         },
 
         motherAadharPhoto: {
-            data: Buffer,
-            contentType: String,
+            type: fileSchema,
             required: true
         },
 
