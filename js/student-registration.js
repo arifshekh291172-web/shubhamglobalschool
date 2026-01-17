@@ -21,6 +21,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const isValidAadhaar = (num) => /^\d{12}$/.test(num);
 
     /* ===============================
+       🔐 GET teacherId FROM JWT TOKEN
+    =============================== */
+    const getTeacherIdFromToken = () => {
+        const token = localStorage.getItem("teacherToken");
+        if (!token) return null;
+
+        try {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            return payload.id; // JWT payload me id hai
+        } catch (err) {
+            return null;
+        }
+    };
+
+    /* ===============================
        FORM SUBMIT
     =============================== */
     form.addEventListener("submit", async (e) => {
@@ -36,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const formData = new FormData(form);
 
             /* ===============================
-               BASIC TEXT VALIDATION
+               TEXT VALIDATION
             =============================== */
             const studentAadhar = formData.get("studentAadhar");
             const fatherAadhar = formData.get("fatherAadhar");
@@ -52,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error("Mother Aadhaar must be 12 digits");
 
             /* ===============================
-               FILE VALIDATION (IMPORTANT)
+               FILE VALIDATION
             =============================== */
             if (!formData.get("photo")?.name)
                 throw new Error("Student photo is required");
@@ -70,35 +85,42 @@ document.addEventListener("DOMContentLoaded", () => {
                 throw new Error("Mother Aadhaar photo is required");
 
             /* ===============================
+               🔥 ADD teacherId (FROM JWT)
+            =============================== */
+            const teacherId = getTeacherIdFromToken();
+            if (!teacherId) {
+                throw new Error("Teacher not logged in or token expired");
+            }
+            formData.append("teacherId", teacherId);
+
+            /* ===============================
                API CALL
             =============================== */
-        const res = await fetch(
-  "https://shubhamglobalschool.onrender.com/api/students/register",
-  {
-    method: "POST",
-    body: formData,
-    headers: {
-      Authorization: "Bearer " + localStorage.getItem("teacherToken")
-    }
-  }
-);
+            const res = await fetch(
+                "https://shubhamglobalschool.onrender.com/api/students/register",
+                {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        Authorization: "Bearer " + localStorage.getItem("teacherToken")
+                    }
+                }
+            );
 
-let data;
-const contentType = res.headers.get("content-type");
+            let data;
+            const contentType = res.headers.get("content-type");
 
-if (contentType && contentType.includes("application/json")) {
-  data = await res.json();
-} else {
-  const text = await res.text();   // HTML error page
-  throw new Error("Server error (non-JSON response)");
-}
+            if (contentType && contentType.includes("application/json")) {
+                data = await res.json();
+            } else {
+                throw new Error("Server error (invalid response)");
+            }
 
-if (!res.ok) {
-  throw new Error(data.message || "Registration failed");
-}
+            if (!res.ok) {
+                throw new Error(data.message || "Registration failed");
+            }
 
-
-            showSuccess("Student registered successfully");
+            showSuccess(data.message || "Student registered successfully");
             form.reset();
 
         } catch (err) {
