@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+
 const Student = require("../models/Student");
 const Teacher = require("../models/Teacher");
 
 /* ===============================
-   MULTER (MEMORY STORAGE)
-   Files disk par save nahi honge
+   MULTER CONFIG (MEMORY STORAGE)
 =============================== */
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -21,7 +21,7 @@ router.post(
     upload.fields([
         { name: "photo", maxCount: 1 },
         { name: "signature", maxCount: 1 },
-        { name: "aadharPhoto", maxCount: 1 },
+        { name: "studentAadharPhoto", maxCount: 1 }, // ✅ FIXED
         { name: "fatherAadharPhoto", maxCount: 1 },
         { name: "motherAadharPhoto", maxCount: 1 }
     ]),
@@ -74,7 +74,7 @@ router.post(
             if (
                 !req.files?.photo ||
                 !req.files?.signature ||
-                !req.files?.aadharPhoto ||
+                !req.files?.studentAadharPhoto ||
                 !req.files?.fatherAadharPhoto ||
                 !req.files?.motherAadharPhoto
             ) {
@@ -104,10 +104,13 @@ router.post(
                 studentName,
                 studentAadhar,
                 dob,
+
                 fatherName,
                 fatherAadhar,
+
                 motherName,
                 motherAadhar,
+
                 lastSchool,
                 boardName,
                 qualification,
@@ -121,8 +124,8 @@ router.post(
                     contentType: req.files.signature[0].mimetype
                 },
                 studentAadharPhoto: {
-                    data: req.files.aadharPhoto[0].buffer,
-                    contentType: req.files.aadharPhoto[0].mimetype
+                    data: req.files.studentAadharPhoto[0].buffer,
+                    contentType: req.files.studentAadharPhoto[0].mimetype
                 },
                 fatherAadharPhoto: {
                     data: req.files.fatherAadharPhoto[0].buffer,
@@ -146,7 +149,7 @@ router.post(
         } catch (err) {
             console.error("Registration Error:", err);
             return res.status(500).json({
-                message: "Server error"
+                message: err.message || "Server error"
             });
         }
     }
@@ -154,7 +157,6 @@ router.post(
 
 /* =====================================================
    GET ALL STUDENTS (PAGINATION + SEARCH)
-   ?page=1&limit=20&search=abc
 ===================================================== */
 router.get("/", async (req, res) => {
     try {
@@ -180,14 +182,13 @@ router.get("/", async (req, res) => {
             page,
             totalPages: Math.ceil(total / limit)
         });
-
     } catch (err) {
         res.status(500).json({ message: "Error fetching students" });
     }
 });
 
 /* =====================================================
-   STUDENT COUNT (DASHBOARD)
+   STUDENT COUNT
 ===================================================== */
 router.get("/count", async (req, res) => {
     try {
@@ -199,15 +200,13 @@ router.get("/count", async (req, res) => {
 });
 
 /* =====================================================
-   GET SINGLE STUDENT (DETAIL PAGE)
-   Buffers excluded intentionally
+   GET SINGLE STUDENT (WITHOUT BUFFERS)
 ===================================================== */
 router.get("/:id", async (req, res) => {
     try {
-        const student = await Student.findById(req.params.id)
-            .select(
-                "-studentPhoto -studentSignature -studentAadharPhoto -fatherAadharPhoto -motherAadharPhoto"
-            );
+        const student = await Student.findById(req.params.id).select(
+            "-studentPhoto -studentSignature -studentAadharPhoto -fatherAadharPhoto -motherAadharPhoto"
+        );
 
         if (!student) {
             return res.status(404).json({ message: "Student not found" });
@@ -220,41 +219,7 @@ router.get("/:id", async (req, res) => {
 });
 
 /* =====================================================
-   UPDATE STUDENT (TEXT FIELDS ONLY)
-===================================================== */
-router.put("/:id", async (req, res) => {
-    try {
-        const updated = await Student.findByIdAndUpdate(
-            req.params.id,
-            {
-                studentName: req.body.studentName,
-                lastSchool: req.body.lastSchool,
-                boardName: req.body.boardName,
-                qualification: req.body.qualification
-            },
-            { new: true, runValidators: true }
-        );
-
-        res.json(updated);
-    } catch (err) {
-        res.status(400).json({ message: "Update failed" });
-    }
-});
-
-/* =====================================================
-   DELETE STUDENT
-===================================================== */
-router.delete("/:id", async (req, res) => {
-    try {
-        await Student.findByIdAndDelete(req.params.id);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ message: "Delete failed" });
-    }
-});
-
-/* =====================================================
-   DOCUMENT PREVIEW (BUFFER STREAM)
+   DOCUMENT PREVIEW
 ===================================================== */
 router.get("/:id/document/:type", async (req, res) => {
     try {
@@ -269,24 +234,19 @@ router.get("/:id/document/:type", async (req, res) => {
         ];
 
         if (!allowedTypes.includes(type)) {
-            return res.status(400).json({
-                message: "Invalid document type"
-            });
+            return res.status(400).json({ message: "Invalid document type" });
         }
 
         const student = await Student.findById(id).select(type);
 
         if (!student || !student[type]) {
-            return res.status(404).json({
-                message: "Document not found"
-            });
+            return res.status(404).json({ message: "Document not found" });
         }
 
         res.set("Content-Type", student[type].contentType);
         res.send(student[type].data);
 
     } catch (err) {
-        console.error("Document Stream Error:", err);
         res.status(500).json({ message: "Server error" });
     }
 });
